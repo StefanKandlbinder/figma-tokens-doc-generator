@@ -1,28 +1,47 @@
-import { Buffer } from 'buffer';
-import { on, once, emit, showUI } from '@create-figma-plugin/utilities';
-import { useCallback, useState } from 'preact/hooks';
-import { CloseHandler, GetTokensFromGit, SetLoading } from './types';
+import { Buffer } from "buffer";
+import { on, once, emit, showUI } from "@create-figma-plugin/utilities";
+import { useCallback, useState } from "preact/hooks";
+import {
+  CloseHandler,
+  GetTokensFromGit,
+  SetLoading,
+  CreateColorComponent,
+} from "./types";
+import { ColorComponent } from "./figma-components/colorComponent";
+import { ColorClassComponent } from "./figma-components/ColorClassComponent";
 
 let tokens: any = {};
 export default function () {
   on<GetTokensFromGit>(
-    'GET_TOKENS_FROM_GIT',
+    "GET_TOKENS_FROM_GIT",
     async function (owner, repo, path) {
       const data = await getTokensFromGit(owner, repo, path);
       tokens = data;
 
-      //const globalColors = traverseObject(tokens['c-avatar'].avatar.color);
-      const globalColors = traverseObject(tokens.global.colors);
-      createColors(globalColors);
+      const globalColors = traverseObject(tokens["c-avatar"].avatar.color);
+      // const globalColors = traverseObject(tokens.global.colors);
+      // createColors(globalColors);
+      // const component = ColorComponent(globalColors, tokens);
+      const colorComponent = new ColorClassComponent(globalColors, tokens);
+      colorComponent.initComponent();
+      colorComponent.initColorRow();
+      colorComponent.createHeader();
+      colorComponent.addColors();
     }
   );
 
-  once<CloseHandler>('CLOSE', function () {
+  on<CreateColorComponent>("CREATE_COLOR_COMPONENT", function () {
+    // Define some sample text data
+    // Create a component using the sample data and color
+    // const component = ColorComponent(sampleTexts, sampleCircleColor);
+  });
+
+  once<CloseHandler>("CLOSE", function () {
     figma.closePlugin();
   });
 
   showUI({
-    height: 300,
+    height: 480,
     width: 360,
   });
 }
@@ -31,27 +50,27 @@ const traverseObject = (obj: any, keys: any = [], colors: any = []) => {
   // Loop through all the keys in the object
   for (const key in obj) {
     // If the current value is an object, recursively call the function on it
-    if (typeof obj[key] === 'object') {
+    if (typeof obj[key] === "object") {
       // Add the current key to the keys array and call the function recursively
       keys.push(key);
       traverseObject(obj[key], keys, colors);
       // Remove the current key from the keys array to backtrack
       keys.pop();
-    } else if (key === 'type' && obj[key] === 'color') {
+    } else if (key === "type" && obj[key] === "color") {
       // If the current key is "type" and the value is "COLOR", add the color to the colors array
       let value: string = obj.value;
-      if (value.includes('{')) {
+      if (value.includes("{")) {
         colors.push({
-          name: ['colors', ...keys].join('.'),
+          name: ["colors", ...keys].join("."),
           value: getNestedProperty(
             tokens.global,
-            value.replace('{', '').replace('}', '')
+            value.replace("{", "").replace("}", "")
           ).value,
           rawValue: obj.value,
         });
       } else {
         colors.push({
-          name: ['colors', ...keys].join('.'),
+          name: ["colors", ...keys].join("."),
           value: obj.value,
           rawValue: obj.value,
         });
@@ -59,95 +78,6 @@ const traverseObject = (obj: any, keys: any = [], colors: any = []) => {
     }
   }
   return colors;
-};
-
-const createColors = (colors: any) => {
-  const nodes: SceneNode[] = [];
-  const outer = figma.createFrame();
-  outer.layoutMode = 'VERTICAL';
-  outer.resize(600, 200);
-  outer.counterAxisSizingMode = 'AUTO';
-  outer.counterAxisAlignItems = 'MIN';
-  outer.primaryAxisSizingMode = 'AUTO';
-  outer.layoutAlign = 'STRETCH';
-  outer.layoutGrow = 1;
-  outer.fills = [];
-
-  const frame = figma.createFrame();
-  // frame.resize(outer.width, frame.height);
-  frame.resizeWithoutConstraints(outer.width, frame.height);
-  frame.layoutMode = 'HORIZONTAL';
-  frame.counterAxisSizingMode = 'AUTO';
-  frame.counterAxisAlignItems = 'CENTER';
-  frame.primaryAxisSizingMode = 'FIXED';
-  frame.layoutAlign = 'STRETCH';
-  frame.itemSpacing = 16;
-  frame.fills = [];
-
-  const layoutGrid: LayoutGrid = {
-    visible: false,
-    pattern: 'COLUMNS',
-    gutterSize: 16,
-    alignment: 'STRETCH',
-    offset: 0,
-    count: 5,
-  };
-
-  frame.layoutGrids = [layoutGrid];
-
-  const color = createText('Color', frame);
-  const name = createText('Name', frame);
-  const description = createText('Description', frame);
-  const value = createText('Value', frame);
-  const rawValue = createText('Raw Value', frame);
-
-  outer.appendChild(frame);
-
-  for (let i = 0; i < colors.length; i++) {
-    const frame = figma.createFrame();
-    // frame.resize(outer.width, frame.height);
-    frame.resizeWithoutConstraints(outer.width, frame.height);
-    frame.layoutMode = 'HORIZONTAL';
-    frame.counterAxisSizingMode = 'AUTO';
-    frame.counterAxisAlignItems = 'CENTER';
-    frame.primaryAxisSizingMode = 'FIXED';
-    frame.layoutAlign = 'STRETCH';
-    frame.itemSpacing = 16;
-    frame.fills = [];
-
-    const layoutGrid: LayoutGrid = {
-      visible: false,
-      pattern: 'COLUMNS',
-      gutterSize: 16,
-      alignment: 'STRETCH',
-      offset: 0,
-      count: 5,
-    };
-
-    frame.layoutGrids = [layoutGrid];
-
-    const klecks = figma.createRectangle();
-    klecks.constraints = { horizontal: 'MIN', vertical: 'MIN' };
-
-    const name = createText(colors[i].name, frame);
-    const description = createText('blabla', frame);
-    const value = createText(colors[i].value, frame);
-    const rawValue = createText(colors[i].rawValue, frame);
-
-    klecks.resize(16, 16);
-    klecks.layoutGrow = 1;
-    klecks.cornerRadius = 8;
-    const fill = convertHexToRGB(colors[i].value, tokens);
-    klecks.fills = [{ type: 'SOLID', color: fill }];
-
-    frame.name = colors[i].name;
-    frame.appendChild(klecks);
-    outer.appendChild(frame);
-  }
-
-  figma.currentPage.appendChild(outer);
-  figma.currentPage.selection = nodes;
-  figma.viewport.scrollAndZoomIntoView(nodes);
 };
 
 const getTokensFromGit = async (owner: string, repo: string, path: string) => {
@@ -162,7 +92,7 @@ const getTokensFromGit = async (owner: string, repo: string, path: string) => {
     fileSHA = data.sha;
   } catch (error) {
     console.log(error);
-    emit('SET_LOADING', false);
+    emit("SET_LOADING", false);
   }
 
   return getFileBlob(owner, repo, fileSHA);
@@ -175,20 +105,20 @@ const getFileBlob = async (owner: string, repo: string, fileSHA: any) => {
     );
     const data = await response.json();
 
-    emit('SET_LOADING', false);
+    emit("SET_LOADING", false);
 
     let fileBlob = data.content;
     return convertBlob(fileBlob);
   } catch (error) {
     console.log(error);
-    emit('SET_LOADING', false);
+    emit("SET_LOADING", false);
   }
 };
 
 const convertBlob = async (blob: any) => {
   // console.log(blob)
   try {
-    const fileContents = Buffer.from(blob, 'base64').toString();
+    const fileContents = Buffer.from(blob, "base64").toString();
     const jsonData = JSON.parse(fileContents);
     return jsonData;
     // return traverseObject(jsonData.global.colors);
@@ -212,22 +142,22 @@ const createText = async (content: string, frame: FrameNode) => {
   text.characters = content;
 
   text.fontSize = 16;
-  text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+  text.fills = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
 
   frame.appendChild(text);
 };
 
 const getNestedProperty = (obj: any, keys: any) => {
-  return keys.split('.').reduce((acc: any, key: any) => acc && acc[key], obj);
+  return keys.split(".").reduce((acc: any, key: any) => acc && acc[key], obj);
 };
 
 const convertHexToRGB = (hexCode: string, tokens: any) => {
-  let hex = hexCode.replace('#', '');
+  let hex = hexCode.replace("#", "");
 
-  if (hexCode.includes('{')) {
+  if (hexCode.includes("{")) {
     let token = hexCode.substring(1, hexCode.length - 1);
     hex = getNestedProperty(tokens.global, token).value;
-    hex = hex.replace('#', '');
+    hex = hex.replace("#", "");
 
     console.log(token, getNestedProperty(tokens.global, token));
   }

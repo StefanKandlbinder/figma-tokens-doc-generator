@@ -3,7 +3,7 @@
   "editorType": [
     "figma"
   ],
-  "id": "design-tokens-doc-generator",
+  "id": "figma-tokens-doc-generator",
   "name": "Design Tokens Doc Generator (Preact)",
   "main": "build/main.js",
   "ui": "build/ui.js"

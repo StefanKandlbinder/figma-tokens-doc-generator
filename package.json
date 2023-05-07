@@ -8,7 +8,7 @@
   "devDependencies": {
     "@create-figma-plugin/build": "^2.4.0",
     "@create-figma-plugin/tsconfig": "^2.4.0",
-    "@figma/plugin-typings": "1.57.1",
+    "@figma/plugin-typings": "1.64.0",
     "typescript": ">=4"
   },
   "scripts": {
@@ -19,7 +19,7 @@
     "editorType": [
       "figma"
     ],
-    "id": "design-tokens-doc-generator",
+    "id": "figma-tokens-doc-generator",
     "name": "Design Tokens Doc Generator (Preact)",
     "main": "src/main.ts",
     "ui": "src/ui.tsx"
