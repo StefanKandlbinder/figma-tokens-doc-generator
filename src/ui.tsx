@@ -1,110 +1,71 @@
 import {
-  Button,
-  Columns,
   Container,
-  Muted,
   render,
-  Text,
-  TextboxNumeric,
-  Textbox,
   VerticalSpace,
+  LoadingIndicator,
+  Dropdown,
+  DropdownOption,
+  Checkbox,
+  Text
 } from "@create-figma-plugin/ui";
-import { emit, on } from "@create-figma-plugin/utilities";
-import { h } from "preact";
-import { useCallback, useState } from "preact/hooks";
+import { on } from "@create-figma-plugin/utilities";
+import { Fragment, JSX, h } from "preact";
+import { useState } from "preact/hooks";
 
-import {
-  CloseHandler,
-  GetTokensFromGit,
-  SetLoading,
-  CreateColorComponent,
-} from "./types";
+import { keys, crush, get, pick } from 'radash'
+
+import { GetSharedPluginDataHandler } from "./types";
+import { traverseObject } from "./utilities/traverseObject";
+import { ColorClassComponent } from "./figma-components/ColorClassComponent";
 
 function Plugin() {
-  const [isLoading, setLoading] = useState(false);
-  const [ownerString, setOwnerString] = useState("StefanKandlbinder");
-  const [repoString, setRepoString] = useState("figma-tokens-doc-generator");
-  const [pathString, setPathString] = useState("tokens.json");
+  const [isLoading, setLoading] = useState(true);
+  const [value, setValue] = useState<null | string>(null)
+  const [options, setOptions] = useState<Array<DropdownOption>>([
+    { value: 'foo' }
+  ])
+  const [tokens, setTokens] = useState<any>({})
 
-  on<SetLoading>("SET_LOADING", function (loading: boolean) {
-    setLoading(loading);
+  on<GetSharedPluginDataHandler>("GET_SHARED_PLUGIN_DATA", function (tokens:string) {
+    const tokensCollection = Object.keys(JSON.parse(tokens));
+    const tokensOptions = tokensCollection.map((token) => {
+      return {value: token}
+    })
+
+    setTokens(JSON.parse(tokens))
+    setOptions(tokensOptions)
+    setLoading(false)
   });
 
-  const handleGetTokensFromGit = useCallback(
-    function () {
-      if (ownerString !== null && repoString !== null && pathString !== null) {
-        setLoading(true);
-        emit<GetTokensFromGit>(
-          "GET_TOKENS_FROM_GIT",
-          ownerString,
-          repoString,
-          pathString
-        );
-      }
-    },
-    [ownerString, repoString, pathString]
-  );
+  const handleChange = (event: JSX.TargetedEvent<HTMLInputElement>) => {
+    const newValue = event.currentTarget.value
+    setValue(newValue)
 
-  const handleCloseButtonClick = useCallback(function () {
-    emit<CloseHandler>("CLOSE");
-  }, []);
+    console.log(console.log(tokens[newValue]))
 
-  const handleCreateColorComponent = useCallback(function () {
-    emit<CreateColorComponent>("CREATE_COLOR_COMPONENT");
-  }, []);
+      // const globalColors = traverseObject(tokens['c-avatar'].avatar.color);
+      // const globalColors = traverseObject(tokens.global.colors);
+      // createColors(globalColors);
+      // const component = ColorComponent(globalColors, tokens);
+      // const colorComponent = new ColorClassComponent(globalColors, tokens);
+      // colorComponent.initComponent();
+      // colorComponent.initColorRow();
+      // colorComponent.createHeader();
+      // colorComponent.addColors();
+  }
 
   return (
     <Container space="medium">
-      <VerticalSpace space="large" />
-      <Text>
-        <Muted>Owner</Muted>
-      </Text>
+      {isLoading ? <LoadingIndicator/> : null}
+      <Fragment>
       <VerticalSpace space="small" />
-      <Textbox
-        onValueInput={setOwnerString}
-        value={ownerString}
-        variant="border"
+      <Dropdown
+        onChange={handleChange}
+        options={options}
+        placeholder="choose a tokens set"
+        value={value}
       />
-      <VerticalSpace space="large" />
-      <Text>
-        <Muted>Repo</Muted>
-      </Text>
-      <VerticalSpace space="small" />
-      <Textbox
-        onValueInput={setRepoString}
-        value={repoString}
-        variant="border"
-      />
-      <VerticalSpace space="large" />
-      <Text>
-        <Muted>Path</Muted>
-      </Text>
-      <VerticalSpace space="small" />
-      <Textbox
-        onValueInput={setPathString}
-        value={pathString}
-        variant="border"
-      />
-      <VerticalSpace space="extraLarge" />
-      <Columns space="extraSmall">
-        <Button
-          fullWidth
-          loading={isLoading ? true : undefined}
-          onClick={handleGetTokensFromGit}
-        >
-          Get Tokens from Git
-        </Button>
-        <Button fullWidth onClick={handleCloseButtonClick} secondary>
-          Close
-        </Button>
-      </Columns>
-      <VerticalSpace space="small" />
-      <VerticalSpace space="extraLarge" />
-      <Columns space="extraSmall">
-        <Button fullWidth onClick={handleCreateColorComponent}>
-          Create Color Component
-        </Button>
-      </Columns>
+      </Fragment>
     </Container>
   );
 }
